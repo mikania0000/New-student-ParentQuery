@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>鳳甲國中新生編班查詢系統</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <style>
+    /* CSS 樣式設定
+       包含響應式設計、表單美化、結果表格與懸浮訊息 
+    */
+    body { font-family: "Microsoft JhengHei", Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; color: #333; font-size: 16px; overflow-x: hidden; }
+    .container { width: 90%; max-width: 800px; margin: 0 auto; background-color: #fff; padding: 20px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); border-radius: 8px; margin-top: 20px; }
+    
+    h1 { 
+      font-size: 2.5em; margin-bottom: 20px; background-color: #f1c40f; color: transparent; text-align: center; padding: 15px; border-radius: 8px; 
+      transition: color 0.1s; white-space: nowrap; overflow: hidden; width: auto; 
+    }
+    
+    #searchForm { display: flex; flex-direction: column; align-items: flex-start; }
+    
+    .form-group { position: relative; width: 100%; margin-bottom: 20px; display: flex; flex-direction: column; }
+    .form-group label { font-size: 1.5em; color: #333; margin-bottom: 8px; font-weight: bold; }
+    .form-group input[type="text"], .form-group input[type="password"] { 
+      width: 100%; padding: 12px; box-sizing: border-box; font-size: 1.5em; border: 2px solid #ddd; border-radius: 6px; transition: border-color 0.3s;
+    }
+    .form-group input:focus { border-color: #3498db; outline: none; }
+    
+    .password-toggle { position: absolute; right: 15px; top: 52px; cursor: pointer; color: #888; font-size: 1.5em; }
+    
+    .form-actions { display: flex; justify-content: space-between; gap: 15px; width: 100%; flex-wrap: wrap; }
+    .form-actions .btn { 
+      flex: 1; min-width: 120px; height: 50px; font-size: 1.3em; font-weight: bold; color: white; border: none; border-radius: 6px; cursor: pointer; 
+      box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2); display: flex; justify-content: center; align-items: center; transition: transform 0.1s, opacity 0.2s;
+    }
+    .form-actions .btn:active { transform: scale(0.98); }
+    
+    .search-btn { background-color: #2ecc71; }
+    .search-btn:hover { background-color: #27ae60; }
+    
+    .clear-btn { background-color: #e74c3c; }
+    .clear-btn:hover { background-color: #c0392b; }
+    
+    .upload-btn { background-color: #8e44ad; }
+    .upload-btn:hover { background-color: #732d91; }
+    
+    #resultTable { margin-top: 30px; width: 100%; border-collapse: collapse; overflow-x: auto; display: block; }
+    #resultTable th, #resultTable td { border: 1px solid #ddd; padding: 12px; text-align: center; font-size: 1.1em; white-space: nowrap; }
+    #resultTable th { background-color: #3498db; color: white; }
+    #resultTable tr:nth-child(even) { background-color: #ecf0f1; }
+    #resultTable tr:hover { background-color: #e1f5fe; }
+    
+    /* 懸浮訊息樣式 */
+    .floating-message { position: fixed; top: 30%; left: 50%; transform: translate(-50%, -50%); font-size: 20px; font-weight: bold; color: white; padding: 15px 30px; border-radius: 50px; z-index: 9999; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+    .floating-message.show { opacity: 1; }
+    .success-msg { background-color: rgba(46, 204, 113, 0.95); }
+    .error-msg { background-color: rgba(231, 76, 60, 0.95); }
+    .info-msg { background-color: rgba(52, 152, 219, 0.95); }
+
+    @media (max-width: 600px) {
+      .container { padding: 15px; width: 95%; }
+      h1 { font-size: 1.5em; padding: 10px; }
+      .form-actions .btn { font-size: 1.1em; height: 45px; }
+      .form-group input[type="text"], .form-group input[type="password"] { font-size: 1.2em; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 id="header-title">新生編班查詢系統</h1>
+    <form id="searchForm" onsubmit="event.preventDefault(); search();">
+      <div class="form-group">
+        <label for="nameInput">新生姓名：</label>
+        <input type="text" id="nameInput" name="nameInput" placeholder="請輸入姓名" required>
+      </div>
+      <div class="form-group">
+        <label for="lastFourDigitsInput">身分證後四碼：</label>
+        <input type="password" id="lastFourDigitsInput" name="lastFourDigitsInput" placeholder="請輸入身分證後4碼" required>
+        <span id="togglePassword" class="material-icons password-toggle">visibility</span>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn search-btn" onclick="search()">查  詢</button>
+        <button type="button" class="btn clear-btn" onclick="clearForm()">清  除</button>
+        <button type="button" class="btn upload-btn" onclick="openUploadSystem()">新生照片上傳</button>
+      </div>
+    </form>
+    
+    <div id="resultTable"></div>
+  </div>
+
+  <script>
+    // -----------------------------------------------------------------------
+    // 設定 Google Apps Script 部署網址 (Web App URL)
+    // -----------------------------------------------------------------------
+    const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbxEi8wpbXBsdhAmZPQcLPcxK77kXfYTj9BD44_Apa-fa44yUshlmKRWHLMv5fbPvqnRyA/exec';
+
+    document.addEventListener('DOMContentLoaded', function() {
+      // 1. 初始化：獲取學期標題 (使用 GET)
+      fetchSemester();
+
+      // 2. 綁定密碼顯示/隱藏功能
+      var togglePassword = document.getElementById('togglePassword');
+      var passwordField = document.getElementById('lastFourDigitsInput');
+      
+      togglePassword.addEventListener('click', function () {
+        var type = passwordField.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordField.setAttribute('type', type);
+        this.textContent = type === 'password' ? 'visibility' : 'visibility_off';
+      });
+    });
+
+    // 獲取學期資料
+    function fetchSemester() {
+      fetch(`${GAS_API_URL}?action=getSemester`)
+        .then(response => response.json())
+        .then(semester => {
+          var titleElement = document.getElementById('header-title');
+          if (semester && semester !== "undefined") {
+             titleElement.innerText = '鳳甲國中' + semester + '新生編班查詢系統';
+          }
+          titleElement.style.color = 'black';
+        })
+        .catch(error => {
+          console.error('Error fetching semester:', error);
+          var titleElement = document.getElementById('header-title');
+          titleElement.style.color = 'black'; // 確保即使失敗文字也顯示
+        });
+    }
+
+    // 搜尋主功能 (使用 POST)
+    function search() {
+      clearPreviousResults();
+      var name = document.getElementById("nameInput").value.trim();
+      var lastFourDigits = document.getElementById("lastFourDigitsInput").value.trim();
+
+      if (!name || !lastFourDigits) {
+        showFloatingMessage('error', '請輸入完整資料！', 2000);
+        return;
+      }
+
+      showProgressAnimation(() => {
+        let action = '';
+        
+        // 判斷查詢模式
+        if (lastFourDigits === '000000') {
+          action = 'searchByKeyword';
+        } else {
+          action = 'searchStudent';
+        }
+
+        // 使用 POST 方法傳送資料 (application/x-www-form-urlencoded)
+        const params = new URLSearchParams();
+        params.append('action', action);
+        params.append('name', name);
+        params.append('lastFourDigits', lastFourDigits);
+
+        fetch(GAS_API_URL, {
+          method: 'POST',
+          headers: {
+             'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: params
+        })
+        .then(response => response.json())
+        .then(results => {
+           // 處理回傳結果
+           if (results && results.length > 1 && !results.error) {
+             buildTable(results);
+             showFloatingMessage('success', '查詢完成！', 2000);
+           } else {
+             if (results.error) {
+                 console.error('API Error:', results.error);
+             }
+             if (action === 'searchByKeyword') {
+                showFloatingMessage('error', '查無符合關鍵字的資料', 4000);
+             } else {
+                showFloatingMessage('error', '查無資料，請洽註冊組7675300轉13 陳組長', 4000);
+             }
+           }
+        })
+        .catch(error => {
+           console.error('Search request failed:', error);
+           showFloatingMessage('error', '連線錯誤，請稍後再試', 4000);
+        });
+      });
+    }
+
+    // 清除表單
+    function clearForm() {
+      document.getElementById("searchForm").reset();
+      clearPreviousResults();
+    }
+
+    // 清除舊結果
+    function clearPreviousResults() {
+      document.getElementById('resultTable').innerHTML = '';
+    }
+
+    // 建構結果表格
+    function buildTable(results) {
+      var table = '<table><thead><tr>';
+      // 標題列
+      for (var i = 0; i < results[0].length; i++) {
+        table += '<th>' + results[0][i] + '</th>';
+      }
+      table += '</tr></thead><tbody>';
+      // 資料列
+      for (var i = 1; i < results.length; i++) {
+        table += '<tr>';
+        for (var j = 0; j < results[i].length; j++) {
+          table += '<td>' + results[i][j] + '</td>';
+        }
+        table += '</tr>';
+      }
+      table += '</tbody></table>';
+      document.getElementById('resultTable').innerHTML = table;
+    }
+
+    // 顯示懸浮訊息
+    function showFloatingMessage(type, text, duration) {
+      // 移除舊訊息
+      const oldMsg = document.querySelector('.floating-message');
+      if (oldMsg) oldMsg.remove();
+
+      const message = document.createElement('div');
+      message.classList.add('floating-message', 'show');
+
+      if (type === 'success') {
+        message.classList.add('success-msg');
+        message.innerHTML = `<span class="material-icons" style="vertical-align: middle;">check_circle</span> ${text}`;
+      } else if (type === 'error') {
+        message.classList.add('error-msg');
+        message.innerHTML = `<span class="material-icons" style="vertical-align: middle;">error</span> ${text}`;
+      } else {
+        message.classList.add('info-msg');
+        message.innerHTML = `<span class="material-icons" style="vertical-align: middle;">info</span> ${text}`;
+      }
+
+      document.body.appendChild(message);
+      setTimeout(() => {
+        message.classList.remove('show');
+        setTimeout(() => message.remove(), 300);
+      }, duration);
+    }
+
+    // 顯示處理中動畫
+    function showProgressAnimation(callback) {
+      let percent = 0;
+      const progressMsg = document.createElement('div');
+      progressMsg.classList.add('floating-message', 'info-msg', 'show');
+      document.body.appendChild(progressMsg);
+
+      const interval = setInterval(() => {
+        percent += 10;
+        progressMsg.innerHTML = `<span class="material-icons spinning" style="vertical-align: middle; animation: spin 1s linear infinite;">sync</span> 查詢中...${percent}%`;
+        
+        // 簡單的旋轉動畫 CSS
+        if (!document.getElementById('spin-style')) {
+            const style = document.createElement('style');
+            style.id = 'spin-style';
+            style.innerHTML = `@keyframes spin { 100% { -webkit-transform: rotate(360deg); transform:rotate(360deg); } }`;
+            document.head.appendChild(style);
+        }
+
+        if (percent >= 100) {
+          clearInterval(interval);
+          setTimeout(() => {
+            progressMsg.classList.remove('show');
+            setTimeout(() => {
+                progressMsg.remove();
+                if (callback) callback();
+            }, 300);
+          }, 300);
+        }
+      }, 50); // 加快動畫速度讓使用者體驗更好
+    }
+
+    // 開啟照片上傳系統
+    function openUploadSystem() {
+      window.open('https://script.google.com/a/macros/fjm.kh.edu.tw/s/AKfycbyY3CxrTpsg_8eeYbEMykQYmLGei6GbeCk4H7eSqrM2tSIN8gP9lcRiUu5gTfVKaFyb/exec', '_blank');
+    }
+  </script>
+</body>
+</html>
