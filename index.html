@@ -69,14 +69,17 @@
 <body>
   <div class="container">
     <h1 id="header-title">新生編班查詢系統</h1>
-    <form id="searchForm" onsubmit="event.preventDefault(); search();">
+    <!-- 加入 autocomplete="off" 防止整個表單自動填入 -->
+    <form id="searchForm" onsubmit="event.preventDefault(); search();" autocomplete="off">
       <div class="form-group">
         <label for="nameInput">新生姓名：</label>
-        <input type="text" id="nameInput" name="nameInput" placeholder="請輸入姓名" required>
+        <!-- 加入 autocomplete="off" -->
+        <input type="text" id="nameInput" name="fj_name_query" placeholder="請輸入姓名" required autocomplete="off">
       </div>
       <div class="form-group">
         <label for="lastFourDigitsInput">身分證後四碼：</label>
-        <input type="password" id="lastFourDigitsInput" name="lastFourDigitsInput" placeholder="請輸入身分證後4碼" required>
+        <!-- 加入 autocomplete="new-password" 防止密碼管理員干擾 -->
+        <input type="password" id="lastFourDigitsInput" name="fj_id_query" placeholder="請輸入身分證後4碼" required autocomplete="new-password">
         <span id="togglePassword" class="material-icons password-toggle">visibility</span>
       </div>
       <div class="form-actions">
